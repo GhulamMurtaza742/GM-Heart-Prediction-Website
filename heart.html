@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heart Attack Risk Prediction — GM AI Web Tech</title>
+<meta name="description" content="10-year heart attack risk estimate from independent risk factors, using the Framingham hard coronary heart disease model.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fff5f6;color:#1f2937;line-height:1.55}
+header{background:linear-gradient(135deg,#9f1239,#e11d48);color:#fff;text-align:center;padding:48px 20px 80px}
+header h1{font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.2;margin:8px 0}
+main{max-width:760px;margin:-48px auto 0;padding:0 16px 32px}
+.card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(159,18,57,.12);margin-bottom:18px}
+h2{font-size:1.2rem;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+label{display:block;font-weight:600;font-size:.95rem}
+input,select{width:100%;margin-top:6px;padding:12px;border:2px solid #e5e7eb;border-radius:11px;font-size:1rem;background:#fff;color:inherit}
+input:focus,select:focus{outline:none;border-color:#e11d48}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-weight:600}
+.check input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:#e11d48}
+.btns{display:flex;gap:12px;margin-top:22px}
+button{flex:1;padding:14px;border-radius:12px;border:2px solid #e11d48;background:#e11d48;color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+button[type=reset]{background:#fff;color:#e11d48}
+#percent{font-size:3.2rem;font-weight:800;line-height:1.1}
+.bar{height:12px;border-radius:9px;background:#f3f4f6;margin:12px 0;overflow:hidden}
+#fill{height:100%;width:0;transition:width .5s}
+ul{margin-left:20px}
+.warn{border-left:5px solid #e11d48}
+.small{font-size:.88rem;color:#6b7280}
+footer{text-align:center;padding:0 16px 30px}
+</style>
+</head>
+<body>
+<header>
+  <p>&#9829; GM AI Web Tech</p>
+  <h1>Heart Attack Risk Prediction</h1>
+  <p>Your estimated 10-year risk, based on independent risk factors</p>
+</header>
+<main>
+  <section class="card warn">
+    <strong>Chest pain, trouble breathing, sweating or pain spreading to the arm or jaw?</strong>
+    Do not use this tool. Get emergency medical help immediately.
+  </section>
+
+  <form class="card" id="form">
+    <h2>Enter your risk factors</h2>
+    <p class="small" style="margin-bottom:14px">For adults aged 30–79 <strong>without</strong> heart disease, diabetes or leg artery disease (intermittent claudication).</p>
+    <div class="grid">
+      <label>Sex<select id="sex" required><option value="">Select</option><option value="m">Male</option><option value="f">Female</option></select></label>
+      <label>Age (years)<input id="age" type="number" min="30" max="79" step="1" required></label>
+      <label>Total cholesterol (mg/dL)<input id="tc" type="number" min="100" max="405" step="any" required></label>
+      <label>HDL cholesterol (mg/dL)<input id="hdl" type="number" min="20" max="100" step="any" required></label>
+      <label>Systolic blood pressure (mmHg)<input id="sbp" type="number" min="90" max="200" step="any" required></label>
+    </div>
+    <label class="check"><input type="checkbox" id="treated"> I take medicine for high blood pressure</label>
+    <label class="check"><input type="checkbox" id="smoker"> I currently smoke</label>
+    <label class="check"><input type="checkbox" id="excluded"> I have heart disease, diabetes or intermittent claudication</label>
+    <div class="btns"><button type="submit">Predict Risk</button><button type="reset">Reset</button></div>
+  </form>
+
+  <section class="card" id="result" aria-live="polite" hidden>
+    <h2>Your result</h2>
+    <div id="percent"></div>
+    <div class="bar" id="bar"><div id="fill"></div></div>
+    <p id="message"></p>
+  </section>
+
+  <section class="card">
+    <h2>About the model</h2>
+    <p>This uses the <a href="https://www.framinghamheartstudy.org/fhs-risk-functions/hard-coronary-heart-disease-10-year-risk/" target="_blank" rel="noopener">Framingham Heart Study hard coronary heart disease model</a>. It estimates the chance of a heart attack or coronary death within 10 years.</p>
+    <ul><li>Age and sex</li><li>Total and HDL cholesterol</li><li>Systolic blood pressure and its treatment</li><li>Current smoking</li></ul>
+  </section>
+</main>
+<footer class="small">
+  <p>For education only. This is not a diagnosis or a substitute for medical advice. The model was developed in a US population and may be less accurate for South Asian people. Your data is not sent or saved.</p>
+</footer>
+
+<script>
+// Framingham hard CHD (10-year) coefficients and population means
+const MODEL = {
+  m: { s0: 0.9402, smokeCap: 70,
+       b: [52.00961, 20.014077, -0.905964, 1.305784, 0.241549, 12.096316, -4.605038, -2.84367, -2.93323],
+       mean: [3.8926095, 5.3441475, 3.7731132, 4.8618212, 0.1180474, 0.335602, 20.8111562, 1.2890301, 15.2144965] },
+  f: { s0: 0.98767, smokeCap: 78,
+       b: [31.764001, 22.465206, -1.187731, 2.552905, 0.420251, 13.07543, -5.060998, -2.996945, 0],
+       mean: [3.9213204, 5.3628984, 4.0146369, 4.8376494, 0.142802, 0.3236202, 21.0557746, 1.2519882, 0] }
+};
+
+function heartRisk({ sex, age, tc, hdl, sbp, treated, smoker }) {
+  const m = MODEL[sex], a = Math.log(age), c = Math.log(tc), s = smoker ? 1 : 0;
+  const x = [a, c, Math.log(hdl), Math.log(sbp), treated && sbp > 120 ? 1 : 0, s,
+             a * c, Math.log(Math.min(age, m.smokeCap)) * s, a * a];
+  const sum = m.b.reduce((t, b, i) => t + b * (x[i] - m.mean[i]), 0);
+  return 100 * (1 - Math.pow(m.s0, Math.exp(sum)));
+}
+
+const $ = id => document.getElementById(id);
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const excluded = $('excluded').checked;
+  let text = '', color = '', width = 0;
+  let message = 'This calculator is not valid for you. Please ask your doctor to assess your risk.';
+  if (!excluded) {
+    const risk = heartRisk({ sex: $('sex').value, age: +$('age').value, tc: +$('tc').value, hdl: +$('hdl').value,
+      sbp: +$('sbp').value, treated: $('treated').checked, smoker: $('smoker').checked });
+    const [level, col, advice] = risk < 10 ? ['Low risk', '#15803d', 'Keep up healthy habits and regular check-ups.']
+      : risk <= 20 ? ['Intermediate risk', '#b45309', 'Discuss your risk factors with a doctor.']
+      : ['High risk', '#b91c1c', 'Please see a doctor soon.'];
+    text = risk < 1 ? '<1%' : risk.toFixed(1) + '%';
+    color = col; width = Math.min(risk, 100);
+    message = `${level}: estimated chance of a heart attack or coronary death in the next 10 years. ${advice}`;
+    if ($('smoker').checked) message += ' Stopping smoking lowers your risk.';
+  }
+  $('percent').textContent = text;
+  $('percent').style.color = color;
+  $('bar').hidden = excluded;
+  $('fill').style.width = width + '%';
+  $('fill').style.background = color;
+  $('message').textContent = message;
+  $('result').hidden = false;
+  $('result').scrollIntoView({ behavior: 'smooth' });
+});
+
+// Hide an old result when inputs change
+$('form').addEventListener('input', () => $('result').hidden = true);
+$('form').addEventListener('reset', () => $('result').hidden = true);
+</script>
+</body>
+</html>
